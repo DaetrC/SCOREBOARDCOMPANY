@@ -235,8 +235,10 @@ function modal(title,html,w){
   box.appendChild(hd2);box.appendChild(bd);
   bg.appendChild(box);
   bg.addEventListener('click',function(e){if(e.target===bg)CM();});
-  document.getElementById('mc').innerHTML='';
-  document.getElementById('mc').appendChild(bg);
+  var mc=document.getElementById('mc');
+  mc.innerHTML='';
+  mc.appendChild(bg);
+  bindActionsIn(mc);
 }
 function CM(){document.getElementById('mc').innerHTML='';}
 
@@ -262,6 +264,7 @@ function go(p){
   document.getElementById('so').classList.remove('show');
   document.getElementById('sw').scrollTop=0;
 }
+function bindActions(){bindActionsIn(document.getElementById('scr'));}
 function R(){
   var fn={dashboard:rDash,projects:rProj,songs:rSongs,sessions:rSess,contributors:rCon,prospects:rPros,splitsheets:rSpl,media:rMed,settings:rSet};
   document.getElementById('scr').innerHTML=(fn[PG]||rDash)();
@@ -269,8 +272,8 @@ function R(){
 }
 
 // Bind all data-action buttons after render
-function bindActions(){
-  document.getElementById('scr').querySelectorAll('[data-action]').forEach(function(el){
+function bindActionsIn(root){
+  root.querySelectorAll('[data-action]').forEach(function(el){
     el.addEventListener('click',function(e){
       e.stopPropagation();
       var act=el.getAttribute('data-action');
@@ -311,7 +314,7 @@ function bindActions(){
     });
   });
   // Bind change events for inline inputs
-  document.getElementById('scr').querySelectorAll('[data-change]').forEach(function(el){
+  root.querySelectorAll('[data-change]').forEach(function(el){
     el.addEventListener('change',function(){
       var act=el.getAttribute('data-change');
       var id=el.getAttribute('data-id');
@@ -403,7 +406,6 @@ function mProj(id){
     '<div class="fld"><label>Untitled Link</label><input class="inp" id="pul" value="'+esc(v.untitledLink)+'"/></div>'+
     '<div class="fld"><label>Notes</label><textarea class="inp" id="pn" style="height:60px;resize:vertical">'+esc(v.notes)+'</textarea></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:8px">'+(id?'<button class="btn btd" data-action="dProj" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sProj" data-id="'+(id||'')+'">Save</button></div>',640);
-  setTimeout(bindActions,10);
 }
 function sProj(id){
   var a=D.artists.find(function(x){return x.id===V('pa');})||{};
@@ -453,7 +455,6 @@ function mSong(id){
     '<div class="fld"><label>Drive URL</label><input class="inp" id="sdl" value="'+esc(v.driveLink)+'"/></div>'+
     '<div class="fld"><label>Notes</label><textarea class="inp" id="sn" style="height:60px;resize:vertical">'+esc(v.notes)+'</textarea></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:8px">'+(id?'<button class="btn btd" data-action="dSong" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sSong" data-id="'+(id||'')+'">Save</button></div>',590);
-  setTimeout(bindActions,10);
 }
 function sSong(id){
   var obj={id:id||uid(),title:V('st2'),artistId:V('sa'),projectId:V('sp'),status:V('sst'),producers:SV('spr'),songwriters:[],sessionDate:V('sd2'),splitSheetLink:V('sss'),driveLink:V('sdl'),untitledLink:'',notes:V('sn')};
@@ -492,7 +493,6 @@ function mDay(ds){
   var h=ev.length?ev.map(function(s){return '<div style="padding:12px;background:var(--surf2);border-radius:8px;margin-bottom:8px"><div class="f13 w7 m4">'+esc(s.title)+'</div><div class="f12 cs">'+esc(s.type)+' - '+esc(s.studio)+'</div><button class="btn btg btsm" style="margin-top:8px" data-action="mSess" data-id="'+s.id+'">Edit</button></div>';}).join(''):
     '<div class="emp">No sessions<br><br><button class="btn btp" data-action="mSess">+ Book Session</button></div>';
   modal(fmtD(ds),h);
-  setTimeout(bindActions,10);
 }
 function mSess(id,dateStr){
   var s=id?D.sessions.find(function(x){return x.id===id;}):null;
@@ -510,7 +510,6 @@ function mSess(id,dateStr){
     '<div class="fld"><label>Contributors (Ctrl+click)</label><select multiple class="inp" id="ssc" style="height:72px">'+D.contributors.map(function(c){return '<option value="'+c.id+'"'+((v.contributors||[]).includes(c.id)?' selected':'')+'>'+esc(c.name)+'</option>';}).join('')+'</select></div>'+
     '<div class="fld"><label>Notes</label><textarea class="inp" id="ssn" style="height:60px;resize:vertical">'+esc(v.notes)+'</textarea></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:8px">'+(id?'<button class="btn btd" data-action="dSess" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sSess" data-id="'+(id||'')+'">Save</button></div>');
-  setTimeout(bindActions,10);
 }
 function sSess(id){
   var obj={id:id||uid(),title:V('sst2'),type:V('ssty'),studio:V('ssst'),date:V('ssd'),startTime:V('sss2'),endTime:V('sse'),projectIds:SV('ssp'),contributors:SV('ssc'),notes:V('ssn')};
@@ -543,7 +542,6 @@ function mCon(id){
     '<div class="fld"><label>Utilization %</label><input type="number" class="inp" id="cu" value="'+v.utilization+'" min="0" max="100"/></div>'+
     '<div class="fld"><label>Color</label><input type="color" id="cc2" value="'+esc(v.color)+'" style="height:38px;border:none;background:none;cursor:pointer;width:60px"/></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:8px">'+(id?'<button class="btn btd" data-action="dCon" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sCon" data-id="'+(id||'')+'">Save</button></div>');
-  setTimeout(bindActions,10);
 }
 function sCon(id){
   var ex=id?D.contributors.find(function(x){return x.id===id;}):null;
@@ -580,7 +578,6 @@ function mPros(id){
     '<div class="fld"><label>Drive Link</label><input class="inp" id="prd" value="'+esc(v.driveLink)+'"/></div>'+
     '<div class="fld"><label>Notes</label><textarea class="inp" id="prno" style="height:70px;resize:vertical">'+esc(v.notes)+'</textarea></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:8px">'+(id?'<button class="btn btd" data-action="dPros" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sPros" data-id="'+(id||'')+'">Save</button></div>');
-  setTimeout(bindActions,10);
 }
 function sPros(id){
   var obj={id:id||uid(),name:V('prn'),genre:V('prg'),stage:V('prs'),driveLink:V('prd'),notes:V('prno'),targetContributors:[],convertedToProject:false};
@@ -623,7 +620,6 @@ function mSpl(id){
     '<div class="fld"><label>Status</label><select class="inp" id="slst"><option'+(v.status==='complete'?' selected':'')+'>complete</option><option'+(v.status==='pending'?' selected':'')+'>pending</option><option'+(v.status==='missing'?' selected':'')+'>missing</option></select></div>'+
     '<div class="fld"><label>Drive Link</label><input class="inp" id="sldl" value="'+esc(v.driveLink)+'"/></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:16px">'+(id?'<button class="btn btd" data-action="dSpl" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sSpl" data-id="'+(id||'')+'">Save</button></div>');
-  setTimeout(bindActions,10);
 }
 function sSpl(id){
   var sg=document.getElementById('slsg');
@@ -680,7 +676,6 @@ function mArt(id){
     '<div class="fld"><label>Role</label><select class="inp" id="arr"><option'+(v.role==='Artist'?' selected':'')+'>Artist</option><option'+(v.role==='Artist/Producer'?' selected':'')+'>Artist/Producer</option><option'+(v.role==='Producer'?' selected':'')+'>Producer</option><option'+(v.role==='Featured Artist'?' selected':'')+'>Featured Artist</option></select></div>'+
     '<div class="fld"><label>Color</label><input type="color" id="arc" value="'+esc(v.color)+'" style="height:38px;border:none;background:none;cursor:pointer;width:60px"/></div>'+
     '<div class="fx g8" style="justify-content:flex-end;margin-top:16px">'+(id?'<button class="btn btd" data-action="dArt" data-id="'+id+'">Delete</button>':'')+'<button class="btn bts" data-action="CM">Cancel</button><button class="btn btp" data-action="sArt" data-id="'+(id||'')+'">Save</button></div>');
-  setTimeout(bindActions,10);
 }
 function sArt(id){
   var obj={id:id||uid(),name:V('arn'),role:V('arr'),color:V('arc')};
