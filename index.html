@@ -104,7 +104,7 @@ input,select,textarea,button{font-family:'Syne',sans-serif}::placeholder{color:v
 <body>
 <div id="app">
   <nav id="sidebar">
-    <div class="sbl"><div class="sbn">SCOREBOARD</div><div class="sbc"> A CRAIGSTONE CO.</div></div>
+    <div class="sbl"><div class="sbn">SCOREBOARD</div><div class="sbc">CRAIGSTONE CO.</div></div>
     <div class="ni" id="ni"></div>
     <div class="sbf">v1.0 — DEMO MODE</div>
   </nav>
@@ -128,8 +128,7 @@ input,select,textarea,button{font-family:'Syne',sans-serif}::placeholder{color:v
 </div>
 <div id="mc"></div>
 <script>
-const CFG={API_URL:'https://script.google.com/macros/s/AKfycbwFUjBr3n--S--crAQNi_GDcrh7Dc_j4qrHMhQEn_PSh3NQZOEej9JN_yJuZvwf0SY/exec
-HERE',DEMO:false};
+const CFG={API_URL:'https://script.google.com/macros/s/AKfycbwcP0sRAvNvqNt7FTt9Pk_BSuYG6--xht5o7wjKZDVmiuIZR4nea8FAGZpeZvaNGxU/exec',DEMO:false};
 let D={
   artists:[{id:'a1',name:'Daetrius',role:'Artist',color:'#a78bfa'},{id:'a2',name:'VScript',role:'Artist/Producer',color:'#38bdf8'},{id:'a3',name:'Mani',role:'Artist',color:'#fb923c'}],
   contributors:[{id:'c1',name:'Bridgez',role:'Producer',color:'#f472b6',projects:['p1','p2'],utilization:72},{id:'c2',name:'KC',role:'Producer',color:'#22d07a',projects:['p1','p3'],utilization:58},{id:'c3',name:'VScript',role:'Producer/Songwriter',color:'#38bdf8',projects:['p1','p2','p3'],utilization:85},{id:'c4',name:'Amo',role:'Songwriter',color:'#f0b429',projects:['p2'],utilization:40}],
@@ -350,7 +349,24 @@ document.getElementById('si').addEventListener('input',function(){
 });
 document.addEventListener('click',function(e){if(!e.target.closest('#si')&&!e.target.closest('#so'))document.getElementById('so').classList.remove('show');});
 document.getElementById('tsb').addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('col');});
-setSv('saved');rNav();R();
+setSv('saved');rNav();
+(function(){
+  if(!CFG.DEMO && CFG.API_URL.indexOf('PASTE')===-1){
+    setSv('saving');
+    document.getElementById('scr').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:16px"><div style="font-size:32px;opacity:.3">⬡</div><div style="font-size:13px;color:var(--sub)">Connecting to database…</div></div>';
+    fetch(CFG.API_URL+'?action=loadAll')
+      .then(function(r){return r.json();})
+      .then(function(res){
+        if(res.success && res.data){
+          D=Object.assign(D,res.data);
+        }
+        setSv('saved');R();
+      })
+      .catch(function(){setSv('error');R();});
+  } else {
+    R();
+  }
+})();
 </script>
 </body>
 </html>
