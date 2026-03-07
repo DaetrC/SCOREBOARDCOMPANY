@@ -106,7 +106,7 @@ input,select,textarea,button{font-family:'Syne',sans-serif}::placeholder{color:v
   <nav id="sidebar">
     <div class="sbl"><div class="sbn">SCOREBOARD</div><div class="sbc">CRAIGSTONE CO.</div></div>
     <div class="ni" id="ni"></div>
-    <div class="sbf">v1.0 — DEMO MODE</div>
+    <div class="sbf">v1.0 — LIVE MODE</div>
   </nav>
   <div id="main">
     <header id="topbar">
@@ -128,7 +128,7 @@ input,select,textarea,button{font-family:'Syne',sans-serif}::placeholder{color:v
 </div>
 <div id="mc"></div>
 <script>
-const CFG={API_URL:'https://script.google.com/macros/s/AKfycbwYGX2rA8t94jpQvaWwmTk4vKSTXaqcuvhsRUoL3du_yXaPmAav5gN_r-RQbQoM3vE/exec',DEMO:false};
+const CFG={API_URL:'https://script.google.com/macros/s/AKfycbxjb2fMQSPGLJgC5_e0sv5uLEWarcxTsfZgW6X2qewK2sXK9xor_-xxHPxLgVJJwr4/exec',DEMO:false};
 let D={
   artists:[{id:'a1',name:'Daetrius',role:'Artist',color:'#a78bfa'},{id:'a2',name:'VScript',role:'Artist/Producer',color:'#38bdf8'},{id:'a3',name:'Mani',role:'Artist',color:'#fb923c'}],
   contributors:[{id:'c1',name:'Bridgez',role:'Producer',color:'#f472b6',projects:['p1','p2'],utilization:72},{id:'c2',name:'KC',role:'Producer',color:'#22d07a',projects:['p1','p3'],utilization:58},{id:'c3',name:'VScript',role:'Producer/Songwriter',color:'#38bdf8',projects:['p1','p2','p3'],utilization:85},{id:'c4',name:'Amo',role:'Songwriter',color:'#f0b429',projects:['p2'],utilization:40}],
@@ -200,13 +200,20 @@ function V(id){return (document.getElementById(id)||{value:''}).value;}
 function SV(id){return Array.from((document.getElementById(id)||{selectedOptions:[]}).selectedOptions).map(function(o){return o.value;});}
 var saveT=null;
 function setSv(s){var dot=document.getElementById('sd'),txt=document.getElementById('st');if(!dot||!txt)return;var m={saving:['#38bdf8','Saving…'],saved:['#22d07a','Saved'],error:['#f05252','Error']};var r=m[s]||m.saved;dot.style.background=r[0];txt.textContent=r[1];}
-function tSv(){setSv('saving');if(saveT)clearTimeout(saveT);saveT=setTimeout(function(){
-  if(!CFG.DEMO&&CFG.API_URL.indexOf('PASTE')===-1){
+function tSv(){
+  setSv('saving');
+  if(saveT)clearTimeout(saveT);
+  saveT=setTimeout(function(){
+    if(CFG.DEMO||CFG.API_URL.indexOf('PASTE')!==-1){setSv('saved');return;}
+    // Save via no-cors POST - data goes to sheets silently
     fetch(CFG.API_URL,{
       method:'POST',
       mode:'no-cors',
       headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({action:'batchUpdate',data:D})
+    }).then(function(){setSv('saved');}).catch(function(){setSv('error');});
+  },900);
+})
     }).then(function(){setSv('saved');}).catch(function(){setSv('error');});
   } else {
     setSv('saved');
@@ -362,29 +369,33 @@ document.addEventListener('click',function(e){if(!e.target.closest('#si')&&!e.ta
 document.getElementById('tsb').addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('col');});
 setSv('saved');rNav();
 
-// Load from Sheets then render
-(function(){
-  if(!CFG.DEMO && CFG.API_URL.indexOf('PASTE')===-1){
-    setSv('saving');
-    document.getElementById('scr').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:16px"><div style="font-size:32px;opacity:.3">⬡</div><div style="font-size:13px;color:var(--sub)">Connecting to database…</div></div>';
-    fetch(CFG.API_URL+'?action=loadAll',{method:'GET',mode:'no-cors'})
-      .then(function(){
-        // no-cors means we can't read response, so just load via script tag trick
-        return fetchData();
-      })
-      .catch(function(){R();});
-  } else {
-    R();
-  }
+(function init(){
+  if(CFG.DEMO || CFG.API_URL.indexOf('PASTE')!==-1){R();return;}
+  // Load data via JSONP - works cross-origin with Apps Script
+  document.getElementById('scr').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:16px"><div style="font-size:32px;opacity:.3">⬡</div><div style="font-size:13px;color:var(--sub)">Loading data…</div></div>';
+  loadFromSheets();
 })();
 
-function fetchData(){
+function loadFromSheets(){
+  var cb='sc'+Date.now();
   var s=document.createElement('script');
-  var cb='cb'+Date.now();
   window[cb]=function(res){
-    if(res&&res.success&&res.data){
-      D=Object.assign(D,res.data);
-    }
+    try{
+      if(res&&res.success&&res.data){
+        var keys=Object.keys(res.data);
+        for(var i=0;i<keys.length;i++){
+          if(res.data[keys[i]]&&res.data[keys[i]].length>0) D[keys[i]]=res.data[keys[i]];
+        }
+      }
+    }catch(e){}
+    setSv('saved');R();
+    delete window[cb];
+    if(s.parentNode)s.parentNode.removeChild(s);
+  };
+  s.onerror=function(){setSv('error');R();delete window[cb];};
+  s.src=CFG.API_URL+'?callback='+cb;
+  document.head.appendChild(s);
+}
     setSv('saved');
     R();
     delete window[cb];
