@@ -128,7 +128,7 @@ input,select,textarea,button{font-family:'Syne',sans-serif}::placeholder{color:v
 </div>
 <div id="mc"></div>
 <script>
-const CFG={API_URL:'https://script.google.com/macros/s/AKfycbwre1-XfgXgcsNq45PSRYTnnmaVLnYeXNSoDbxP8hf5-5zC_PdQmqJT7WmfYhoVg2Q/exec',DEMO:false};
+const CFG={API_URL:'https://script.google.com/macros/s/AKfycbwYGX2rA8t94jpQvaWwmTk4vKSTXaqcuvhsRUoL3du_yXaPmAav5gN_r-RQbQoM3vE/exec',DEMO:false};
 let D={
   artists:[{id:'a1',name:'Daetrius',role:'Artist',color:'#a78bfa'},{id:'a2',name:'VScript',role:'Artist/Producer',color:'#38bdf8'},{id:'a3',name:'Mani',role:'Artist',color:'#fb923c'}],
   contributors:[{id:'c1',name:'Bridgez',role:'Producer',color:'#f472b6',projects:['p1','p2'],utilization:72},{id:'c2',name:'KC',role:'Producer',color:'#22d07a',projects:['p1','p3'],utilization:58},{id:'c3',name:'VScript',role:'Producer/Songwriter',color:'#38bdf8',projects:['p1','p2','p3'],utilization:85},{id:'c4',name:'Amo',role:'Songwriter',color:'#f0b429',projects:['p2'],utilization:40}],
@@ -200,7 +200,18 @@ function V(id){return (document.getElementById(id)||{value:''}).value;}
 function SV(id){return Array.from((document.getElementById(id)||{selectedOptions:[]}).selectedOptions).map(function(o){return o.value;});}
 var saveT=null;
 function setSv(s){var dot=document.getElementById('sd'),txt=document.getElementById('st');if(!dot||!txt)return;var m={saving:['#38bdf8','Saving…'],saved:['#22d07a','Saved'],error:['#f05252','Error']};var r=m[s]||m.saved;dot.style.background=r[0];txt.textContent=r[1];}
-function tSv(){setSv('saving');if(saveT)clearTimeout(saveT);saveT=setTimeout(function(){try{if(!CFG.DEMO&&CFG.API_URL!=='PASTE_YOUR_APPS_SCRIPT_URL_HERE')fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'batchUpdate',data:D})});setSv('saved');}catch(e){setSv('error');}},900);}
+function tSv(){setSv('saving');if(saveT)clearTimeout(saveT);saveT=setTimeout(function(){
+  if(!CFG.DEMO&&CFG.API_URL.indexOf('PASTE')===-1){
+    fetch(CFG.API_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'batchUpdate',data:D})
+    }).then(function(){setSv('saved');}).catch(function(){setSv('error');});
+  } else {
+    setSv('saved');
+  }
+},900);}
 function upd(x){Object.assign(D,x);tSv();R();}
 function modal(title,html,w){w=w||560;document.getElementById('mc').innerHTML='<div class="mbg" id="mbg"><div class="mbox" style="max-width:'+w+'px"><div class="mhd"><h3>'+esc(title)+'</h3><button class="btn btg" onclick="CM()">✕</button></div><div class="mbd">'+html+'</div></div></div>';document.getElementById('mbg').addEventListener('click',function(e){if(e.target.id==='mbg')CM();});}
 function CM(){document.getElementById('mc').innerHTML='';}
@@ -350,23 +361,39 @@ document.getElementById('si').addEventListener('input',function(){
 document.addEventListener('click',function(e){if(!e.target.closest('#si')&&!e.target.closest('#so'))document.getElementById('so').classList.remove('show');});
 document.getElementById('tsb').addEventListener('click',function(){document.getElementById('sidebar').classList.toggle('col');});
 setSv('saved');rNav();
+
+// Load from Sheets then render
 (function(){
   if(!CFG.DEMO && CFG.API_URL.indexOf('PASTE')===-1){
     setSv('saving');
     document.getElementById('scr').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:16px"><div style="font-size:32px;opacity:.3">⬡</div><div style="font-size:13px;color:var(--sub)">Connecting to database…</div></div>';
-    fetch(CFG.API_URL+'?action=loadAll')
-      .then(function(r){return r.json();})
-      .then(function(res){
-        if(res.success && res.data){
-          D=Object.assign(D,res.data);
-        }
-        setSv('saved');R();
+    fetch(CFG.API_URL+'?action=loadAll',{method:'GET',mode:'no-cors'})
+      .then(function(){
+        // no-cors means we can't read response, so just load via script tag trick
+        return fetchData();
       })
-      .catch(function(){setSv('error');R();});
+      .catch(function(){R();});
   } else {
     R();
   }
 })();
+
+function fetchData(){
+  var s=document.createElement('script');
+  var cb='cb'+Date.now();
+  window[cb]=function(res){
+    if(res&&res.success&&res.data){
+      D=Object.assign(D,res.data);
+    }
+    setSv('saved');
+    R();
+    delete window[cb];
+    document.head.removeChild(s);
+  };
+  s.src=CFG.API_URL+'?callback='+cb+'&action=loadAll';
+  s.onerror=function(){setSv('error');R();};
+  document.head.appendChild(s);
+}
 </script>
 </body>
 </html>
