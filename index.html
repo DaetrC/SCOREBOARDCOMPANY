@@ -339,7 +339,7 @@ function bindActionsIn(root){
 // DASHBOARD
 function sc(l,v,s,c){return '<div class="stc"><div class="stl">'+esc(l)+'</div><div class="stv" style="color:'+c+'">'+v+'</div><div class="sts">'+esc(s)+'</div></div>';}
 function rDash(){
-  var fin=D.projects.reduce(function(s,p){return s+p.finishedSongs;},0);
+  var fin=D.projects.reduce(function(s,p){var st=getSongStats(p.id);return s+(st.total>0?st.finished:p.finishedSongs);},0);
   var goal=D.projects.reduce(function(s,p){return s+p.songGoal;},0);
   var cut=D.projects.reduce(function(s,p){return s+p.ideasCut;},0);
   var risk=D.projects.filter(function(p){return p.health!=='GREEN';}).length;
@@ -351,7 +351,11 @@ function rDash(){
   h+='<div class="card"><div class="sh"><h2>Active Projects</h2></div>';
   D.projects.forEach(function(p){
     var hc=HC[p.health]||'#22d07a';
-    h+='<div style="margin-bottom:14px"><div class="fx ac2 jb m6"><div class="fx ac2 g8">'+hd(p.health)+'<span class="f13 w7">'+esc(p.title)+'</span></div><div class="fx ac2 g8"><span class="f11 cs mono">'+p.finishedSongs+'/'+p.songGoal+'</span>'+cd(p.turnInDate)+'</div></div>'+bar(pct(p),hc)+'<div class="f10 cm" style="margin-top:3px">'+esc(p.phase)+'</div></div>';
+    var st=getSongStats(p.id);
+    var finished=st.total>0?st.finished:p.finishedSongs;
+    var goal=p.songGoal||1;
+    var progress=Math.min(100,Math.round(finished/goal*100));
+    h+='<div style="margin-bottom:14px"><div class="fx ac2 jb m6"><div class="fx ac2 g8">'+hd(p.health)+'<span class="f13 w7">'+esc(p.title)+'</span></div><div class="fx ac2 g8"><span class="f11 cs mono">'+finished+'/'+goal+'</span>'+cd(p.turnInDate)+'</div></div>'+bar(progress,hc)+'<div class="f10 cm" style="margin-top:3px">'+esc(p.phase)+'</div></div>';
   });
   h+='</div>';
   h+='<div class="card"><div class="sh"><h2>Upcoming Sessions</h2></div>';
@@ -369,19 +373,56 @@ function rDash(){
 }
 
 // PROJECTS
+// Auto-tally song counts from Songs data
+function getSongStats(projectId){
+  var songs=D.songs.filter(function(s){return s.projectId===projectId;});
+  var stats={total:songs.length,idea:0,'in progress':0,rough:0,selected:0,mixed:0,mastered:0,cut:0,hold:0};
+  songs.forEach(function(s){if(stats[s.status]!==undefined)stats[s.status]++;});
+  // "finished" = selected + mixed + mastered
+  stats.finished=stats.selected+stats.mixed+stats.mastered;
+  return stats;
+}
 function rProj(){
   var h='<div class="sh"><div><h2>Projects</h2><p class="shs">'+D.projects.length+' projects</p></div><button class="btn btp" data-action="mProj">+ New Project</button></div>';
   h+='<div class="ga">';
   D.projects.forEach(function(p){
     var hc=HC[p.health]||'#22d07a';
     var ac=D.contributors.filter(function(c){return p.contributors&&p.contributors.includes(c.id);});
+    var st=getSongStats(p.id);
+    // Use auto-tallied finished count, fall back to manual if no songs linked
+    var finished=st.total>0?st.finished:p.finishedSongs;
+    var goal=p.songGoal||1;
+    var progress=Math.min(100,Math.round(finished/goal*100));
     h+='<div class="cardc" data-action="mProj" data-id="'+p.id+'"><div class="hbar" style="background:'+hc+'"></div>';
     h+='<div class="fx ac2 jb m10"><div><div class="f14 w8 m4">'+esc(p.title)+'</div><div class="f11 cs">'+esc(p.artist)+'</div></div>'+hd(p.health,true)+'</div>';
     h+='<div class="fx g6 m12 tr2">'+bdg(p.phase,'#38bdf8')+' '+cd(p.turnInDate)+'</div>';
-    h+='<div class="fx g12 m12" style="flex-wrap:wrap"><div class="psi"><div class="psv cg">'+p.finishedSongs+'</div><div class="psl">Done</div></div><div class="psi"><div class="psv ca">'+p.songGoal+'</div><div class="psl">Goal</div></div><div class="psi"><div class="psv co">'+p.ideasCut+'</div><div class="psl">Cut</div></div><div class="psi"><div class="psv cs">'+p.totalInConsideration+'</div><div class="psl">In Play</div></div></div>';
-    h+=bar(pct(p),hc);
-    h+='<div class="fx jb f10 cm mono" style="margin-top:5px"><span>'+pct(p)+'% done</span><span>Due '+fmtD(p.turnInDate)+'</span></div>';
-    if(ac.length)h+='<div class="fx g4p" style="margin-top:12px">'+ac.map(function(c){return av(c.name,c.color,24);}).join('')+'</div>';
+    // Auto stats row
+    h+='<div class="fx g8 m12" style="flex-wrap:wrap">';
+    h+='<div class="psi"><div class="psv cg">'+finished+'</div><div class="psl">Finished</div></div>';
+    h+='<div class="psi"><div class="psv ca">'+goal+'</div><div class="psl">Goal</div></div>';
+    h+='<div class="psi"><div class="psv co">'+p.ideasCut+'</div><div class="psl">Cut</div></div>';
+    h+='<div class="psi"><div class="psv cs">'+st.total+'</div><div class="psl">In Songs</div></div>';
+    h+='</div>';
+    // Status breakdown bar
+    h+='<div style="margin-bottom:8px">';
+    h+=bar(progress,hc);
+    h+='<div class="fx jb f10 cm mono" style="margin-top:4px"><span>'+progress+'% done</span><span>Due '+fmtD(p.turnInDate)+'</span></div>';
+    h+='</div>';
+    // Rough / Mixed / Mastered breakdown
+    if(st.total>0){
+      h+='<div style="background:var(--surf2);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
+      h+='<div class="f10 cm mono m6" style="text-transform:uppercase;letter-spacing:.06em">Song Breakdown</div>';
+      h+='<div class="fx g6" style="flex-wrap:wrap">';
+      if(st.mastered)h+='<span style="font-size:10px;background:rgba(232,121,249,.15);color:#e879f9;border:1px solid rgba(232,121,249,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.mastered+' Mastered</span>';
+      if(st.mixed)h+='<span style="font-size:10px;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.mixed+' Mixed</span>';
+      if(st.selected)h+='<span style="font-size:10px;background:rgba(34,208,122,.15);color:#22d07a;border:1px solid rgba(34,208,122,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.selected+' Selected</span>';
+      if(st.rough)h+='<span style="font-size:10px;background:rgba(251,146,60,.15);color:#fb923c;border:1px solid rgba(251,146,60,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.rough+' Rough</span>';
+      if(st['in progress'])h+='<span style="font-size:10px;background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st['in progress']+' In Progress</span>';
+      if(st.idea)h+='<span style="font-size:10px;background:rgba(112,112,160,.15);color:#7070a0;border:1px solid rgba(112,112,160,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.idea+' Ideas</span>';
+      if(st.cut)h+='<span style="font-size:10px;background:rgba(240,82,82,.15);color:#f05252;border:1px solid rgba(240,82,82,.3);padding:2px 8px;border-radius:99px;font-weight:700">'+st.cut+' Cut</span>';
+      h+='</div></div>';
+    }
+    if(ac.length)h+='<div class="fx g4p" style="margin-top:4px">'+ac.map(function(c){return av(c.name,c.color,24);}).join('')+'</div>';
     h+='</div>';
   });
   h+='</div>';
